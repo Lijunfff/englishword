@@ -692,72 +692,122 @@ function openDialog(en, cn, pattern, color) {
 function closeDialog(e) { if (e && e.target !== document.getElementById('overlay')) return; document.getElementById('overlay').classList.remove('show'); dialogWord = null; }
 function speakDialogWord() { if (dialogWord) speak(dialogWord.en); }
 
-// ==================== 发音 ====================
+// ==================== 发音（移动端优化版）====================
 var synth = window.speechSynthesis;
 var ttsAudio = null;
 
-// 加载语音列表
+// 获取最佳英语语音（优先本地离线语音，iOS 上更稳定）
+function getBestVoice() {
+  if (!synth) return null;
+  var voices = synth.getVoices();
+  if (!voices || voices.length === 0) return null;
+  // 优先：本地美式英语（iOS Samantha / Android 离线引擎）
+  for (var i = 0; i < voices.length; i++) {
+    if (voices[i].lang === 'en-US' && voices[i].localService) return voices[i];
+  }
+  // 其次：任何本地美式
+  for (var i = 0; i < voices.length; i++) {
+    if (voices[i].lang === 'en-US') return voices[i];
+  }
+  // 再次：任何英语
+  for (var i = 0; i < voices.length; i++) {
+    if (voices[i].lang.indexOf('en') === 0) return voices[i];
+  }
+  return null;
+}
+
+// 加载语音（iOS 在用户交互后才能获取完整列表）
 function loadVoices() {
-  if (synth) { synth._voices = synth.getVoices() || []; }
+  if (!synth) return;
+  var voices = synth.getVoices();
+  if (voices && voices.length > 0) return;
 }
 loadVoices();
 if (synth) {
-  synth.onvoiceschanged = loadVoices;
-  setTimeout(loadVoices, 800);
-  setTimeout(loadVoices, 2000);
+  synth.onvoiceschanged = function() {
+    // 语音就绪时触发，iOS 会在首次 speak 前异步加载
+  };
+  // 页面可见后再试一次（iOS 从后台切回时可能重置）
+  document.addEventListener('visibilitychange', function() {
+    if (!document.hidden) loadVoices();
+  });
 }
 
-// 移动端首次触摸解锁（必须在用户手势中 speak 一次）
+// 移动端首次触摸解锁 SpeechSynthesis（不设 once，每次交互都确保上下文活跃）
 var speechPrimed = false;
 function primeSpeech() {
-  if (speechPrimed || !synth) return;
-  speechPrimed = true;
-  try {
-    var u = new SpeechSynthesisUtterance('a');
-    u.volume = 0; u.lang = 'en-US';
-    synth.speak(u);
-  } catch(e) {}
+  if (!synth) return;
+  if (!speechPrimed) {
+    speechPrimed = true;
+    loadVoices();
+    try {
+      var u = new SpeechSynthesisUtterance('');
+      u.volume = 0; u.lang = 'en-US';
+      synth.speak(u);
+    } catch(e) {}
+  }
 }
-document.addEventListener('touchstart', primeSpeech, { once: true, passive: true });
-document.addEventListener('mousedown', primeSpeech, { once: true, passive: true });
+document.addEventListener('touchstart', primeSpeech, { passive: true });
+document.addEventListener('click', primeSpeech, { passive: true });
 
 function speak(text) {
   if (!text) return;
   toast('🔊 ' + text);
 
-  // 方法 1：Web Speech API（离线，必须在用户手势同步调用栈中）
   if (synth) {
     try {
-      synth.cancel();                      // 同步取消上一条
-      if (synth.paused) synth.resume();    // iOS 兜底
-      var u = new SpeechSynthesisUtterance(text);
-      u.lang = 'en-US'; u.rate = 0.8; u.pitch = 1; u.volume = 1;
-      var vs = synth._voices || synth.getVoices() || [];
-      for (var i = 0; i < vs.length; i++) {
-        if (vs[i].lang && vs[i].lang.indexOf('en') === 0) { u.voice = vs[i]; break; }
-      }
-      var failed = false;
-      u.onerror = function() { if (!failed) { failed = true; ttsFallback(text); } };
-      synth.speak(u);
-      // iOS：speak 后可能立即 paused
-      if (synth.paused) synth.resume();
-      return;
-    } catch(e) {}
-  }
+      // iOS 关键修复：必须同步在用户手势内完成 cancel + speak
+      // 先获取语音引用再 cancel，防止 cancel 导致 voice 列表被清空
+      var voice = getBestVoice();
+      synth.cancel();
 
-  // 方法 2：Audio API 兜底（在线，走 Google TTS）
-  ttsFallback(text);
+      var u = new SpeechSynthesisUtterance(text);
+      u.lang = 'en-US';
+      u.rate = 0.85;
+      u.pitch = 1;
+      u.volume = 1;
+      if (voice) u.voice = voice;
+
+      // 错误时降级到备用方案
+      var fallbackCalled = false;
+      u.onerror = function(e) {
+        if (!fallbackCalled) {
+          fallbackCalled = true;
+          ttsFallback(text);
+        }
+      };
+
+      synth.speak(u);
+
+      // iOS 修复：speak 后可能立即进入 paused 状态
+      if (synth.paused) {
+        setTimeout(function() { try { synth.resume(); } catch(e) {} }, 10);
+      }
+      return;
+    } catch(e) {
+      ttsFallback(text);
+    }
+  } else {
+    ttsFallback(text);
+  }
 }
 
 function ttsFallback(text) {
+  // 备用方案：有道词典发音 API（国内可访问）
   try {
     if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
-    var url = 'https://translate.google.com/translate_tts?ie=UTF-8&q=' + encodeURIComponent(text) + '&tl=en&client=tw-ob';
+    // type=1 为英式，type=2 为美式
+    var url = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(text) + '&type=2';
     ttsAudio = new Audio(url);
-    ttsAudio.play().catch(function(){});
-  } catch(e) {
-    console.warn('TTS fallback failed:', e);
-  }
+    ttsAudio.play().catch(function() {
+      // 有道也失败了，尝试百度 TTS
+      try {
+        var bdUrl = 'https://fanyi.baidu.com/gettts?lan=en&text=' + encodeURIComponent(text) + '&spd=3';
+        var bdAudio = new Audio(bdUrl);
+        bdAudio.play().catch(function(){});
+      } catch(e2) {}
+    });
+  } catch(e) {}
 }
 function toast(msg) {
   const t = document.getElementById('toast');
@@ -777,7 +827,8 @@ function showCard() {
   document.getElementById('fcPattern').style.background = w.catColor;
   document.getElementById('fcProgress').textContent = `${fcIndex+1} / ${fcList.length}`;
   document.getElementById('flashcard').classList.remove('flipped'); fcFlipped = false;
-  setTimeout(() => speak(w.en), 300);
+  // iOS 修复：直接调用 speak，确保在用户手势链内（setTimeout 会导致 iOS 无声）
+  speak(w.en);
 }
 function flipCard() {
   const w = fcList[fcIndex];
