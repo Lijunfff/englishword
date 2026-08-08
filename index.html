@@ -844,6 +844,13 @@ function speakOnline(text) {
     } catch(e) {}
   });
 }
+
+// ── 停止所有发音（切换题目时调用，防止延迟错位）──
+function stopAudio() {
+  if (synth) { try { synth.cancel(); } catch(e) {} }
+  if (ttsAudio) { try { ttsAudio.pause(); ttsAudio = null; } catch(e) {} }
+}
+
 function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
@@ -896,6 +903,8 @@ function markUnknown() {
 // ==================== 测验 ====================
 function initQuiz() { quizScore = 0; quizTotal = 0; document.getElementById('quizScore').textContent = ''; nextQuiz(); }
 function nextQuiz() {
+  // 立即停止上一个单词的发音，防止延迟错位
+  stopAudio();
   const w = allWords[Math.floor(Math.random() * allWords.length)];
   const wrongs = allWords.filter(x => x.en !== w.en).sort(() => Math.random() - 0.5).slice(0, 3);
   const options = [...wrongs, w].sort(() => Math.random() - 0.5);
@@ -913,7 +922,8 @@ function answerQuiz(btn) {
   });
   if (correct) { quizScore++; const en = unesc(btn.dataset.en); progress[en] = 'known'; saveProgress(progress); speak(en); }
   document.getElementById('quizScore').textContent = `✅ ${quizScore} / ${quizTotal}`;
-  setTimeout(nextQuiz, 1200);
+  // 延时 2 秒确保发音播完再切换（手机上 SpeechSynthesis 有延迟）
+  setTimeout(nextQuiz, 2000);
 }
 
 // ==================== 记录 ====================
