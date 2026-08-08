@@ -1,7 +1,13 @@
 {
   "permissions": {
     "allow": [
-      "Read(//f/个人仓库/鲤鱼/pet-phonics-site/**)"
+      "Read(//f/个人仓库/鲤鱼/pet-phonics-site/**)",
+      "Bash(git push *)",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}, time: %{time_total}s\\\\n\" --connect-timeout 5 \"https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4\" -d '<speak version=\"1.0\" xmlns=\"http://www.w3.org/2001/10/synthesis\" xml:lang=\"en-US\"><voice name=\"en-US-JennyNeural\">hello</voice></speak>' -H \"Content-Type: application/ssml+xml\" -H \"X-Microsoft-OutputFormat: audio-24khz-96kbitrate-mono-mp3\")",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}, time: %{time_total}s\\\\n\" --connect-timeout 5 \"https://dict.youdao.com/dictvoice?audio=hello&type=2\")",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}, time: %{time_total}s\\\\n\" --connect-timeout 5 \"https://fanyi.baidu.com/gettts?lan=en&text=hello&spd=3\")",
+      "Bash(git add *)",
+      "Bash(git commit -m '🔧 修复发音无声：移除失效的 Edge TTS，改用 SpeechSynthesis + 有道/百度 *)"
     ]
   }
 }

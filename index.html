@@ -753,38 +753,21 @@ function openDialog(en, cn, pattern, color) {
 function closeDialog(e) { if (e && e.target !== document.getElementById('overlay')) return; document.getElementById('overlay').classList.remove('show'); dialogWord = null; }
 function speakDialogWord() { if (dialogWord) speak(dialogWord.en); }
 
-// ==================== 发音（Edge TTS 神经网络语音 — 自然流畅）====================
+// ==================== 发音（SpeechSynthesis + 国内可用 API 双保险）====================
 var synth = window.speechSynthesis;
 var ttsAudio = null;
-var ttsAbortCtrl = null; // 取消未完成的 TTS 网络请求
 
-// ── Edge TTS（微软免费神经网络语音，发音自然，远超手机自带 TTS） ──
-var EDGE_URL = 'https://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1?TrustedClientToken=6A5AA1D4EAFF4E9FB37E23D68491D6F4';
-
-function buildSSML(text) {
-  // 转义 XML 特殊字符
-  var safe = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-  return '<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis"' +
-    ' xmlns:mstts="https://www.w3.org/2001/mstts" xml:lang="en-US">' +
-    '<voice name="en-US-JennyNeural">' +
-    '<prosody rate="0.9" pitch="+0Hz">' + safe + '</prosody>' +
-    '</voice></speak>';
-}
-
-// ── 获取最佳本地英语语音（降级时使用） ──
+// ── 获取最佳本地英语语音 ──
 function getBestVoice() {
   if (!synth) return null;
   var voices = synth.getVoices();
   if (!voices || voices.length === 0) return null;
-  // 优先：本地美式英语
   for (var i = 0; i < voices.length; i++) {
     if (voices[i].lang === 'en-US' && voices[i].localService) return voices[i];
   }
-  // 其次：任何美式
   for (var i = 0; i < voices.length; i++) {
     if (voices[i].lang === 'en-US') return voices[i];
   }
-  // 再次：任何英语
   for (var i = 0; i < voices.length; i++) {
     if (voices[i].lang.indexOf('en') === 0) return voices[i];
   }
@@ -804,7 +787,7 @@ if (synth) {
   });
 }
 
-// ── 移动端解锁 ──
+// ── 移动端解锁 SpeechSynthesis ──
 var speechPrimed = false;
 function primeSpeech() {
   if (!synth || speechPrimed) return;
@@ -815,64 +798,15 @@ function primeSpeech() {
 document.addEventListener('touchstart', primeSpeech, { passive: true });
 document.addEventListener('click', primeSpeech, { passive: true });
 
-// ── 主入口：三级降级策略 ──
+// ── 主入口：SpeechSynthesis 优先，失败则有道/百度 ──
 function speak(text) {
   if (!text) return;
   toast('🔊 ' + text);
-  // 取消前一个未完成的网络请求
-  if (ttsAbortCtrl) { ttsAbortCtrl.aborted = true; ttsAbortCtrl = null; }
-  // 1️⃣ 优先 Edge 神经网络语音（自然流畅）
-  speakEdge(text);
-}
 
-// ── 方案1：Edge TTS 神经网络语音 ──
-function speakEdge(text) {
-  var ctrl = { aborted: false };
-  ttsAbortCtrl = ctrl;
+  // 停止之前播放的音频
+  if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
 
-  // 3 秒超时：如果 Edge TTS 太慢（网络差/被墙），自动降级
-  var timeoutId = setTimeout(function() {
-    if (!ctrl.aborted) { ctrl.aborted = true; speakLocal(text); }
-  }, 3000);
-
-  try {
-    fetch(EDGE_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/ssml+xml',
-        'X-Microsoft-OutputFormat': 'audio-24khz-96kbitrate-mono-mp3'
-      },
-      body: buildSSML(text)
-    }).then(function(resp) {
-      clearTimeout(timeoutId);
-      if (ctrl.aborted) return;
-      if (!resp.ok) throw new Error('status ' + resp.status);
-      return resp.blob();
-    }).then(function(blob) {
-      if (!blob || ctrl.aborted) return;
-      // 停掉其他正在播放的音频
-      if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
-      if (synth) { try { synth.cancel(); } catch(e) {} }
-      var url = URL.createObjectURL(blob);
-      ttsAudio = new Audio(url);
-      ttsAudio.onended = function() { URL.revokeObjectURL(url); ttsAudio = null; };
-      ttsAudio.onerror = function() { URL.revokeObjectURL(url); ttsAudio = null; };
-      ttsAudio.play().catch(function() {
-        URL.revokeObjectURL(url); ttsAudio = null;
-        if (!ctrl.aborted) speakLocal(text);
-      });
-    }).catch(function() {
-      clearTimeout(timeoutId);
-      if (!ctrl.aborted) speakLocal(text);
-    });
-  } catch(e) {
-    clearTimeout(timeoutId);
-    if (!ctrl.aborted) speakLocal(text);
-  }
-}
-
-// ── 方案2：浏览器 SpeechSynthesis（离线，iOS 音质可接受）──
-function speakLocal(text) {
+  // 1️⃣ 优先 SpeechSynthesis（离线，零延迟，iOS 质量好）
   if (synth) {
     try {
       var voice = getBestVoice();
@@ -880,29 +814,35 @@ function speakLocal(text) {
       var u = new SpeechSynthesisUtterance(text);
       u.lang = 'en-US'; u.rate = 0.85; u.pitch = 1; u.volume = 1;
       if (voice) u.voice = voice;
+
+      var fallbackFired = false;
+      u.onerror = function() {
+        if (!fallbackFired) { fallbackFired = true; speakOnline(text); }
+      };
+
       synth.speak(u);
       if (synth.paused) { setTimeout(function() { try { synth.resume(); } catch(e) {} }, 10); }
       return;
-    } catch(e) {}
+    } catch(e) {
+      speakOnline(text);
+    }
+  } else {
+    speakOnline(text);
   }
-  // 本地也失败，最后一搏
-  speakDict(text);
 }
 
-// ── 方案3：有道词典 TTS（最终备用）──
-function speakDict(text) {
-  try {
-    if (ttsAudio) { ttsAudio.pause(); ttsAudio = null; }
-    var url = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(text) + '&type=2';
-    ttsAudio = new Audio(url);
-    ttsAudio.play().catch(function() {
-      try {
-        var bdUrl = 'https://fanyi.baidu.com/gettts?lan=en&text=' + encodeURIComponent(text) + '&spd=3';
-        var bdAudio = new Audio(bdUrl);
-        bdAudio.play().catch(function(){});
-      } catch(e2) {}
-    });
-  } catch(e) {}
+// ── 2️⃣ 在线 TTS：有道词典 → 百度翻译 ──
+function speakOnline(text) {
+  // 优先有道词典发音（type=2 美式，国内延迟低）
+  var url = 'https://dict.youdao.com/dictvoice?audio=' + encodeURIComponent(text) + '&type=2';
+  ttsAudio = new Audio(url);
+  ttsAudio.play().catch(function() {
+    // 有道失败，尝试百度
+    try {
+      ttsAudio = new Audio('https://fanyi.baidu.com/gettts?lan=en&text=' + encodeURIComponent(text) + '&spd=3');
+      ttsAudio.play().catch(function(){});
+    } catch(e) {}
+  });
 }
 function toast(msg) {
   const t = document.getElementById('toast');
