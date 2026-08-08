@@ -8,7 +8,8 @@
       "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}, time: %{time_total}s\\\\n\" --connect-timeout 5 \"https://fanyi.baidu.com/gettts?lan=en&text=hello&spd=3\")",
       "Bash(git add *)",
       "Bash(git commit -m '🔧 修复发音无声：移除失效的 Edge TTS，改用 SpeechSynthesis + 有道/百度 *)",
-      "Bash(git commit -m '🔊 修复测验板块发音延迟错位 *)"
+      "Bash(git commit -m '🔊 修复测验板块发音延迟错位 *)",
+      "Bash(git commit *)"
     ]
   }
 }
