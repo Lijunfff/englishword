@@ -500,6 +500,13 @@ const PHONICS = [
       ['ACOS','广告销售成本比'],
       ['BSR','畅销排名'],
     ]},
+    {pat:'数据分析指标', words:[
+      ['metric','指标，衡量标准'],
+      ['spike','猛增，急升'],
+      ['variation','变化'],
+      ['shrinkage','缩水，收缩'],
+      ['incentive','激励，刺激'],
+    ]},
   ]},
   { id:'operations', emoji:'⚙️', title:'运营流程', color:'#c0392b', groups:[
     {pat:'日常运营', words:[
@@ -511,6 +518,15 @@ const PHONICS = [
       ['quality issue','质量问题'],
       ['Lightning Deal','秒杀活动'],
       ['Operations Specialist','运营专员'],
+    ]},
+    {pat:'常用表达', words:[
+      ['promptly','迅速地，及时地'],
+      ['initial','初始的'],
+      ['batch','一炉，批次'],
+      ['buffer','缓冲作用'],
+      ['phased out','逐步淘汰'],
+      ['persuasive','有说服力的'],
+      ['channel','途径，方式'],
     ]},
   ]},
   { id:'finance', emoji:'💰', title:'财务报销', color:'#f39c12', groups:[
@@ -530,6 +546,11 @@ const PHONICS = [
       ['merge','合并'],
       ['template','模板'],
       ['manual','手工的'],
+      ['algorithm','算法'],
+      ['manipulate','熟练控制、操作'],
+      ['Structure','结构，构造'],
+      ['hybrid','混合的'],
+      ['column','列'],
     ]},
     {pat:'其他', words:[
       ['via','经由'],
@@ -548,6 +569,15 @@ const PHONICS = [
     ]},
   ]},
   { id:'logistics', emoji:'🚚', title:'物流库存', color:'#9b59b6', groups:[
+    {pat:'仓储配送', words:[
+      ['warehouse','仓库'],
+      ['stuffing','填料，填塞物'],
+      ['delivery','投递，送交'],
+      ['replenishment','补充，补给'],
+      ['bulky','笨重的'],
+      ['logistic','后勤学的'],
+      ['ASIN','亚马逊标准识别号码'],
+    ]},
     {pat:'物流用语', words:[
       ['shipment','船运'],
       ['stranded','搁浅的'],
@@ -560,6 +590,10 @@ const PHONICS = [
       ['reactivate','使恢复活动'],
     ]},
     {pat:'合规用语', words:[
+      ['compliance','服从，遵守'],
+      ['compliant','遵从的，依从的'],
+      ['legitimate','合情合理的；合法的'],
+      ['oriented','以…为方向的，重视…的'],
       ['business license','营业执照'],
       ['official website','官网'],
     ]},
@@ -586,10 +620,37 @@ const PHONETICS = {
   'shipment':"/ˈʃɪpmənt/", 'stranded':"/ˈstrændɪd/", 'inventory':"/ˈɪnvəntri/",
   'reinstate':"/ˌriːɪnˈsteɪt/", 'reactivate':"/riˈæktɪveɪt/",
   'business license':'/ˈbɪznəs ˈlaɪsəns/', 'official website':'/əˈfɪʃl ˈwebsaɪt/',
+  // 2026-08-08 新导入
+  'metric':'/ˈmetrɪk/', 'spike':'/spaɪk/', 'variation':'/ˌveəriˈeɪʃn/',
+  'shrinkage':'/ˈʃrɪŋkɪdʒ/', 'incentive':'/ɪnˈsentɪv/',
+  'promptly':'/ˈprɒmptli/', 'initial':'/ɪˈnɪʃl/', 'batch':'/bætʃ/',
+  'buffer':'/ˈbʌfə(r)/', 'phased out':'/feɪzd aʊt/', 'persuasive':'/pəˈsweɪsɪv/',
+  'channel':'/ˈtʃænl/',
+  'algorithm':'/ˈælɡərɪðəm/', 'manipulate':'/məˈnɪpjuleɪt/',
+  'Structure':'/ˈstrʌktʃə(r)/', 'hybrid':'/ˈhaɪbrɪd/', 'column':'/ˈkɒləm/',
+  'warehouse':'/ˈweəhaʊs/', 'stuffing':'/ˈstʌfɪŋ/', 'delivery':'/dɪˈlɪvəri/',
+  'replenishment':'/rɪˈplenɪʃmənt/', 'bulky':'/ˈbʌlki/', 'logistic':'/ləˈdʒɪstɪk/',
+  'ASIN':'',
+  'compliance':'/kəmˈplaɪəns/', 'compliant':'/kəmˈplaɪənt/',
+  'legitimate':'/lɪˈdʒɪtɪmət/', 'oriented':'/ˈɔːrientɪd/',
 };
 
 // ==================== 每日生词导入记录 ====================
 const IMPORT_LOG = [
+  {
+    date: '2026-08-08',
+    weekday: '周六',
+    source: '导入新单词.md',
+    note: '第二批工作英语词汇 · 数据分析指标 + 运营常用表达 + 技术术语补充 + 仓储配送 + 合规用语补充',
+    totalWords: 28,
+    categories: [
+      { name: '商务指标', count: 5 },
+      { name: '运营流程', count: 7 },
+      { name: '技术优化', count: 5 },
+      { name: '物流库存', count: 7 },
+      { name: '职业合规', count: 4 },
+    ]
+  },
   {
     date: '2026-07-26',
     weekday: '周日',
